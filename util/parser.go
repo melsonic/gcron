@@ -6,58 +6,42 @@ import (
 	"strings"
 )
 
-
 // main function to parse minutes
 // precedance of operatore
 // 1. comma
 // 2. slash
 // 3. dash
-func ParseMinutesTab(input string, store *string) bool {
-	var result bool = parseStar(input, store)
+func ParseBase(input string, min_v int, max_v int) bool {
+	var result bool = parseStar(input)
 	if result {
 		return true
 	}
-	*store = ""
-	result = parseComma(input, store)
+	result = parseComma(input, min_v, max_v)
 	if result {
 		return true
 	}
-	*store = ""
-	result = parseSlash(input, store)
+	result = parseSlash(input, min_v, max_v)
 	if result {
 		return true
 	}
-	*store = ""
-	result = parseDash(input, store)
+	result = parseDash(input, min_v, max_v)
 	if result {
 		return true
 	}
-	*store = ""
-	result = parseValue(input, store)
+	result = parseValue(input, min_v, max_v)
 	return result
 }
 
 // parse * i.e every minute
-func parseStar(input string, store *string) bool {
+func parseStar(input string) bool {
 	if input != "*" {
 		return false
 	}
-	*store += "every minute"
-	return true
-}
-
-// parse numeric minute value
-func parseValue(input string, store *string) bool {
-	num, error := strconv.Atoi(input)
-	if error != nil || num < 0 || num > 59 {
-		return false
-	}
-	*store += fmt.Sprintf("at %dth minute", num)
 	return true
 }
 
 // parse range of minutes
-func parseDash(input string, store *string) bool {
+func parseDash(input string, min_v int, max_v int) bool {
 	if !strings.Contains(input, "-") {
 		return false
 	}
@@ -71,16 +55,15 @@ func parseDash(input string, store *string) bool {
 	// return false in case of any of the following
 	// components are not numbers
 	// numbers are not in minute range
-	if err != nil || left < 0 || left > 59 || right < 0 || right > 59 || left > right {
+	if err != nil || left < min_v || left > max_v || right < min_v || right > max_v || left > right {
 		return false
 	}
 	// if everything is fine store the parsed data into store
-	*store += fmt.Sprintf(" between %s and %s minutes ", tokens[0], tokens[1])
 	return true
 }
 
 // parse step operator
-func parseSlash(input string, store *string) bool {
+func parseSlash(input string, min_v int, max_v int) bool {
 	if !strings.Contains(input, "/") {
 		return false
 	}
@@ -91,42 +74,38 @@ func parseSlash(input string, store *string) bool {
 		return false
 	}
 	// first parse the second part
-	num, error := strconv.Atoi(tokens[1])
+	_, error := strconv.Atoi(tokens[1])
 	if error != nil {
 		return false
 	}
-	*store += fmt.Sprintf(" every %d minutes ", num)
 	// first try to parse dash if it has
-	result := parseDash(tokens[0], store)
+	result := parseDash(tokens[0], min_v, max_v)
 	// else it should be a single value or *
-  // checking for *
-  if !result {
-    result = (tokens[0] == "*")
-  }
-  // checking for numerical minute value
+	// checking for *
 	if !result {
-		num, error = strconv.Atoi(tokens[0])
+		result = (tokens[0] == "*")
+	}
+	// checking for numerical minute value
+	if !result {
+		_, error = strconv.Atoi(tokens[0])
 		if error == nil {
 			result = true
-			*store += fmt.Sprintf(", starting at %d minutes past the hour ", num)
 		}
 	}
-  fmt.Println(result)
-  fmt.Println(*store)
+	fmt.Println(result)
 	return result
 }
 
 // parse comma operator
-func parseComma(input string, store *string) bool {
+func parseComma(input string, min_v int, max_v int) bool {
 	if !strings.Contains(input, ",") {
 		return false
 	}
 	tokens := strings.Split(input, ",")
 	var result bool
 	for ix, token := range tokens {
-		result = parseStar(token, store) || parseSlash(token, store) || parseDash(token, store) || parseValue(token, store)
+		result = parseStar(token) || parseSlash(token, min_v, max_v) || parseDash(token, min_v, max_v) || parseValue(token, min_v, max_v)
 		if ix != len(tokens)-1 {
-			*store += ", "
 		}
 		if !result {
 			break
@@ -135,5 +114,34 @@ func parseComma(input string, store *string) bool {
 	return result
 }
 
-/// parse Hour
-/// main thing is these are repetative things can we make them so that we can use them with other operators
+func parseValue(input string, min_v int, max_v int) bool {
+	num, error := strconv.Atoi(input)
+	if error != nil || num < min_v || num > max_v {
+		return false
+	}
+	return true
+}
+
+// parse Hour
+// main thing is these are repetative things can we make them so that we can use them with other operators
+
+// preprocessor functions
+// preprocess month
+// @input - user input crontab for months field which might contain JAN-DEC
+func PreProcessMonth(input string) string {
+	for month, id := range MONTHS_LIST {
+		input = strings.ReplaceAll(input, month, strconv.Itoa(id))
+	}
+	return input
+}
+
+// preprocess week
+// @input - user input crontab for week field which might contain SUN-MON
+func PreProcessWeek(input string) string {
+	for week, id := range WEEK_LIST {
+		input = strings.ReplaceAll(input, week, strconv.Itoa(id))
+	}
+	// replace 7 with 0 if any
+	input = strings.ReplaceAll(input, "7", "0")
+	return input
+}
