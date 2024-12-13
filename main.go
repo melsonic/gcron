@@ -13,9 +13,9 @@ func main() {
 	fmt.Printf("Cron Expression: ")
 	fmt.Scan(&crontab.Minute, &crontab.Hour, &crontab.DayOfMonth, &crontab.Month, &crontab.DayOfWeek)
 	if !crontab.Validate() {
-		fmt.Println("Error parsing crontab")
+		fmt.Println("❌ Invalid cron configuration")
 		return
 	}
-	fmt.Println("parsing success!!!")
+	fmt.Println("✅ Valid crontab configuration")
 	crontab.Print()
 }
